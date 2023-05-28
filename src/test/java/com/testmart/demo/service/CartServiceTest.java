@@ -3,6 +3,7 @@ package com.testmart.demo.service;
 import com.testmart.demo.model.Cart;
 import com.testmart.demo.model.Product;
 import com.testmart.demo.service.apireponse.ApiCartReponse;
+import com.testmart.demo.utils.ResponseFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,11 +11,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
-
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -24,19 +22,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class CartServiceTest {
 
     @Mock
-    private RestTemplate restTemplate;
-
-    @Mock
     private ApiCartReponse apiCartReponse;
 
     @Mock
-    private ResponseEntity responseEntity;
+    private ResponseFactory<ApiCartReponse> apiCartResponseResponseFactory = new ResponseFactory<>();
+
+    @Mock
+    private ResponseFactory<Cart> cartResponseFactory = new ResponseFactory<>();
+
+    @Mock
+    private ProductService productService = new ProductServiceImpl();
 
     @InjectMocks
     private CartService cartService = new CartServiceImpl();
 
-    @Mock
-    private ProductService productService = new ProductServiceImpl();
     final String CARTS_URL = "https://dummyjson.com/carts/";
     final Integer USER_ID = 5;
     final Integer CART_ID = 1;
@@ -47,17 +46,16 @@ public class CartServiceTest {
         cartMock = Cart.builder().id(CART_ID).total(5f).userId(5).total(5f).build();
     }
 
+    private void setUpCartApiResponse(Cart[] carts, String url){
+        Mockito.when(apiCartReponse.getCarts()).thenReturn(carts);
+        Mockito.when(apiCartResponseResponseFactory.execute(url, ApiCartReponse.class)).thenReturn(apiCartReponse);
+    }
+
     @Test
     public void getAllCartsTest(){
         Cart[] carts = new Cart[2];
         carts[0] = cartMock;
-        Mockito.when(apiCartReponse.getCarts()).thenReturn(carts);
-        Mockito.when(restTemplate.exchange(
-                        CARTS_URL,
-                        HttpMethod.GET,
-                        null,
-                        ApiCartReponse.class))
-          .thenReturn(new ResponseEntity(apiCartReponse, HttpStatus.OK));
+        setUpCartApiResponse(carts, CARTS_URL);
         List cartsResponse = cartService.getAllCarts();
         assertTrue(cartsResponse.size() > 0);
     }
@@ -65,25 +63,14 @@ public class CartServiceTest {
     @Test
     public void getAllCartsNullTest(){
         Cart[] carts = new Cart[2];
-        Mockito.when(apiCartReponse.getCarts()).thenReturn(carts);
-        Mockito.when(restTemplate.exchange(
-                        CARTS_URL,
-                        HttpMethod.GET,
-                        null,
-                        ApiCartReponse.class))
-                .thenReturn(new ResponseEntity(apiCartReponse, HttpStatus.OK));
+        setUpCartApiResponse(carts, CARTS_URL);
         List cartsResponse = cartService.getAllCarts();
         assertTrue(cartsResponse.size() > 0);
     }
 
     @Test
     public void getCartTest(){
-        Mockito.when(restTemplate.exchange(
-                        CARTS_URL+CART_ID,
-                        HttpMethod.GET,
-                        null,
-                        Cart.class))
-                .thenReturn(new ResponseEntity(cartMock, HttpStatus.OK));
+        Mockito.when(cartResponseFactory.execute(CARTS_URL+"1", Cart.class)).thenReturn(cartMock);
         Cart cart = (Cart) cartService.getCart(1);
         assertTrue(cart.getId().equals(cartMock.getId()));
     }
@@ -95,15 +82,7 @@ public class CartServiceTest {
         carts[1] = cartMock;
         carts[1].setTotal(1f);
         carts[1].setId(2);
-        Mockito.when(apiCartReponse.getCarts()).thenReturn(carts);
-
-        Mockito.when(restTemplate.exchange(
-                        CARTS_URL+"user/"+USER_ID,
-                        HttpMethod.GET,
-                        null,
-                        ApiCartReponse.class))
-                .thenReturn(new ResponseEntity(apiCartReponse, HttpStatus.OK));
-
+        setUpCartApiResponse(carts, CARTS_URL+"user/"+USER_ID);
         List<Cart> cartsResponse = cartService.getUserCarts(USER_ID);
         cartsResponse.forEach(p -> p.getUserId().equals(USER_ID));
     }
@@ -113,14 +92,7 @@ public class CartServiceTest {
         Cart[] carts = new Cart[2];
         carts[0] = Cart.builder().id(1).total(5f).userId(5).build();
         carts[1] = Cart.builder().id(2).total(1f).userId(5).build();
-        Mockito.when(apiCartReponse.getCarts()).thenReturn(carts);
-        Mockito.when(restTemplate.exchange(
-                        CARTS_URL,
-                        HttpMethod.GET,
-                        null,
-                        ApiCartReponse.class))
-                .thenReturn(new ResponseEntity(apiCartReponse, HttpStatus.OK));
-
+        setUpCartApiResponse(carts, CARTS_URL);
         Cart cart = (Cart) cartService.getCartWithHighestTotal();
         assertTrue(cart.getId().equals(1));
     }
@@ -130,14 +102,7 @@ public class CartServiceTest {
         Cart[] carts = new Cart[2];
         carts[0] = Cart.builder().id(1).total(5f).userId(5).build();
         carts[1] = Cart.builder().id(2).total(1f).userId(5).build();
-        Mockito.when(apiCartReponse.getCarts()).thenReturn(carts);
-        Mockito.when(restTemplate.exchange(
-                        CARTS_URL,
-                        HttpMethod.GET,
-                        null,
-                        ApiCartReponse.class))
-                .thenReturn(new ResponseEntity(apiCartReponse, HttpStatus.OK));
-
+        setUpCartApiResponse(carts, CARTS_URL);
         Cart cart = (Cart) cartService.getCartWithLowestTotal();
         assertTrue(cart.getId().equals(2));
     }
@@ -151,19 +116,9 @@ public class CartServiceTest {
         Cart[] carts = new Cart[2];
         carts[0] = Cart.builder().id(1).total(5f).userId(5).products(new Product[]{p1, p2}).build();
         carts[1] = Cart.builder().id(2).total(1f).userId(5).products(new Product[]{p1, p2}).build();
-
-        Mockito.when(restTemplate.exchange(
-                        CARTS_URL+"user/"+USER_ID,
-                        HttpMethod.GET,
-                        null,
-                        ApiCartReponse.class))
-                .thenReturn(new ResponseEntity(apiCartReponse, HttpStatus.OK));
-
-        Mockito.when(apiCartReponse.getCarts()).thenReturn(carts);
-
+        setUpCartApiResponse(carts, CARTS_URL+"user/"+USER_ID);
         Mockito.when(productService.getProduct(1)).thenReturn( new ResponseEntity( p1, HttpStatus.OK).getBody());
         Mockito.when(productService.getProduct(2)).thenReturn( new ResponseEntity( p2, HttpStatus.OK).getBody());
-
         List<Product> productsReponse = cartService.addProductImagesToUserCart(USER_ID);
         productsReponse.forEach(p -> {
             assertNotNull(p.getImages());

@@ -2,6 +2,7 @@ package com.testmart.demo.service;
 
 import com.testmart.demo.model.Product;
 import com.testmart.demo.service.apireponse.ApiProductResponse;
+import com.testmart.demo.utils.ResponseFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -9,10 +10,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
@@ -23,24 +20,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class ProductServiceTest {
 
     @Mock
-    private RestTemplate restTemplate;
-
-    @Mock
     private ApiProductResponse apiProductResponse;
 
     @Mock
-    private ResponseEntity responseEntity;
+    private ResponseFactory<ApiProductResponse> apiProductResponseResponseFactory = new ResponseFactory<>();
 
-    @InjectMocks
-    private CartService cartService = new CartServiceImpl();
+    @Mock
+    private ResponseFactory<Product> productResponseFactory = new ResponseFactory<>();
 
     @InjectMocks
     private ProductService productService = new ProductServiceImpl();
     final String PRODUCTS_URL = "https://dummyjson.com/products";
-    final String PRODUCTS_URL_PARAM = "https://dummyjson.com/products?limit=1&skip=2&select=title,price,rating";
 
-    final Integer USER_ID = 5;
-    final Integer CART_ID = 1;
+    final String PRODUCTS_URL_PARAM = "https://dummyjson.com/products?limit=1&skip=2&select=title,price,rating";
 
     private Product productMock;
 
@@ -49,17 +41,16 @@ public class ProductServiceTest {
         productMock = Product.builder().id(1).title("P1").build();
     }
 
+    public void setUpProductApiResponse(Product[] products, String url){
+        Mockito.when(apiProductResponse.getProducts()).thenReturn(products);
+        Mockito.when(apiProductResponseResponseFactory.execute(url, ApiProductResponse.class)).thenReturn(apiProductResponse);
+    }
+
     @Test
     public void getAllProductTest(){
-        Product[] products = new Product[2];
+        Product[] products = new Product[1];
         products[0] = productMock;
-        Mockito.when(apiProductResponse.getProducts()).thenReturn(products);
-        Mockito.when(restTemplate.exchange(
-                        PRODUCTS_URL,
-                        HttpMethod.GET,
-                        null,
-                        ApiProductResponse.class))
-                .thenReturn(new ResponseEntity(apiProductResponse, HttpStatus.OK));
+        setUpProductApiResponse(products, PRODUCTS_URL);
         List<Product> productsResponse = productService.getAllProducts();
         assertTrue(productsResponse.size() > 0);
     }
@@ -67,16 +58,10 @@ public class ProductServiceTest {
     @Test
     public void getAllProductParameterTest(){
         Product[] products = new Product[1];
-
         products[0] = Product.builder().id(1).title("P1").price(5.2f).rating(5f).images(new String[]{"IMG1","IMG2"}).build();
-
         Mockito.when(apiProductResponse.getProducts()).thenReturn(products);
-        Mockito.when(restTemplate.exchange(
-                        PRODUCTS_URL_PARAM,
-                        HttpMethod.GET,
-                        null,
-                        ApiProductResponse.class))
-                .thenReturn(new ResponseEntity(apiProductResponse, HttpStatus.OK));
+        Mockito.when(apiProductResponseResponseFactory.execute(PRODUCTS_URL_PARAM, ApiProductResponse.class)).thenReturn(apiProductResponse);
+        setUpProductApiResponse(products, PRODUCTS_URL_PARAM);
         List<Product> productsResponse = productService.getAllProducts(1,2, new String[]{"title", "price", "rating"});
         assertTrue(productsResponse.size() == 1);
         productsResponse.forEach(p -> {
@@ -89,12 +74,7 @@ public class ProductServiceTest {
 
     @Test
     public void getProductTest(){
-        Mockito.when(restTemplate.exchange(
-                        PRODUCTS_URL+"/1",
-                        HttpMethod.GET,
-                        null,
-                        Product.class))
-                .thenReturn(new ResponseEntity(productMock, HttpStatus.OK));
+        Mockito.when(productResponseFactory.execute(PRODUCTS_URL+"/1", Product.class)).thenReturn(productMock);
         Product product = (Product) productService.getProduct(1);
         assertTrue(product.getId().equals(productMock.getId()));
     }
@@ -107,15 +87,8 @@ public class ProductServiceTest {
         products[1] = Product.builder().id(2).title("phone").price(5.2f).rating(5f).images(new String[]{"IMG1","IMG2"}).build();
         products[2] = Product.builder().id(3).title("phone").price(5.2f).rating(5f).images(new String[]{"IMG1","IMG2"}).build();
         products[3] = Product.builder().id(4).title("phone").price(5.2f).rating(5f).images(new String[]{"IMG1","IMG2"}).build();
-
         String query = "phone";
-        Mockito.when(apiProductResponse.getProducts()).thenReturn(products);
-        Mockito.when(restTemplate.exchange(
-                        PRODUCTS_URL+"/search?q="+query,
-                        HttpMethod.GET,
-                        null,
-                        ApiProductResponse.class))
-                .thenReturn(new ResponseEntity(apiProductResponse, HttpStatus.OK));
+        setUpProductApiResponse(products, PRODUCTS_URL+"/search?q="+query);
         List<Product> productsResponse = productService.searchProducts(query);
         assertTrue(productsResponse.size() > 0);
         productsResponse.forEach(p -> {
@@ -127,22 +100,12 @@ public class ProductServiceTest {
     public void getProductTitlesByWorseRating(){
         Product[] products = new Product[4];
         double raiting = 4;
-
         List<String> expectedResults = List.of(new String[]{"p2", "p3", "p4"});
-
         products[0] = Product.builder().id(1).title("p1").price(5.2f).rating(5f).images(new String[]{"IMG1","IMG2"}).build();
         products[1] = Product.builder().id(2).title("p2").price(5.2f).rating(4f).images(new String[]{"IMG1","IMG2"}).build();
         products[2] = Product.builder().id(3).title("p3").price(5.2f).rating(3f).images(new String[]{"IMG1","IMG2"}).build();
         products[3] = Product.builder().id(4).title("p4").price(5.2f).rating(1f).images(new String[]{"IMG1","IMG2"}).build();
-
-        Mockito.when(apiProductResponse.getProducts()).thenReturn(products);
-        Mockito.when(restTemplate.exchange(
-                        PRODUCTS_URL,
-                        HttpMethod.GET,
-                        null,
-                        ApiProductResponse.class))
-                .thenReturn(new ResponseEntity(apiProductResponse, HttpStatus.OK));
-
+        setUpProductApiResponse(products, PRODUCTS_URL);
         List<String> res = productService.getProductTitlesByWorseRating(raiting);
         assertTrue(expectedResults.equals(res));
     }

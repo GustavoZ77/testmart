@@ -4,6 +4,7 @@ import com.testmart.demo.service.apireponse.ApiCategoryResponse;
 import com.testmart.demo.service.apireponse.ApiProductResponse;
 import com.testmart.demo.model.Category;
 import com.testmart.demo.model.Product;
+import com.testmart.demo.utils.ResponseFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -25,84 +26,46 @@ public class ProductServiceImpl implements ProductService<Product, Category> {
 
     private final String PRODUCTS_BY_CATEGORIES_URL = "https://dummyjson.com/products/category/";
 
-    private HttpHeaders headers;
+    @Autowired
+    private ResponseFactory<Product> productResponseFactory;
 
     @Autowired
-    private RestTemplate restTemplate;
+    private ResponseFactory<ApiCategoryResponse> categoryResponseFactory;
 
-
-    public ProductServiceImpl(){
-        headers = new HttpHeaders();
-        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-    }
+    @Autowired
+    private ResponseFactory<ApiProductResponse> apiProductResponseResponseFactory;
 
     @Override
     public List<Product> getAllProducts() {
-        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-        ResponseEntity<ApiProductResponse> response = restTemplate.exchange(
-                PRODUCTS_URL,
-                HttpMethod.GET,
-                null,
-                ApiProductResponse.class);
-        Product[] productsResponse = response.getBody().getProducts();
-        return Arrays.asList(productsResponse);
+        return List.of(apiProductResponseResponseFactory.execute(PRODUCTS_URL, ApiProductResponse.class).getProducts());
     }
 
     @Override
     public List<Product> getAllProducts(int limit, int skip, String... selectValues) {
-        ResponseEntity<ApiProductResponse> response = restTemplate.exchange(
-                PRODUCTS_URL+"?limit="+limit+"&skip="+skip+"&select="+String.join(",", Arrays.asList(selectValues)),
-                HttpMethod.GET,
-                null,
-                ApiProductResponse.class);
-        Product[] productsResponse = response.getBody().getProducts();
-        return Arrays.asList(productsResponse);
+        String sUrl = PRODUCTS_URL+"?limit="+limit+"&skip="+skip+"&select="+String.join(",", Arrays.asList(selectValues));
+        return List.of(apiProductResponseResponseFactory.execute(sUrl, ApiProductResponse.class).getProducts());
     }
 
     @Override
     public Product getProduct(Integer productId) {
-        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-        ResponseEntity<Product> response = restTemplate.exchange(
-                PRODUCTS_URL+"/"+productId,
-                HttpMethod.GET,
-                null,
-                Product.class);
-        return response.getBody();
+        return productResponseFactory.execute( PRODUCTS_URL+"/"+productId, Product.class);
     }
 
     @Override
     public List<Product> searchProducts(String query) {
-        ResponseEntity<ApiProductResponse> response = restTemplate.exchange(
-                PRODUCTS_URL+"/search?q="+query,
-                HttpMethod.GET,
-                null,
-                ApiProductResponse.class);
-        Product[] productsResponse = response.getBody().getProducts();
-        return Arrays.asList(productsResponse);
+        String sUrl = PRODUCTS_URL+"/search?q="+query;
+        return List.of(apiProductResponseResponseFactory.execute(sUrl, ApiProductResponse.class).getProducts());
     }
 
     @Override
     public List<Category> getCategories() {
-        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-        ResponseEntity<ApiCategoryResponse> response = restTemplate.exchange(
-                PRODUCTS_URL,
-                HttpMethod.GET,
-                null,
-                ApiCategoryResponse.class);
-        Category[] categoryResponse = response.getBody().getCategories();
-        return Arrays.asList(categoryResponse);
+      return List.of(categoryResponseFactory.execute(PRODUCTS_BY_CATEGORIES_URL, ApiCategoryResponse.class).getCategories());
     }
 
     @Override
     public List<Product> getProductsByCategory(String categoryName) {
-        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-        ResponseEntity<ApiProductResponse> response = restTemplate.exchange(
-                PRODUCTS_BY_CATEGORIES_URL+categoryName,
-                HttpMethod.GET,
-                null,
-                ApiProductResponse.class);
-        Product[] categoryResponse = response.getBody().getProducts();
-        return Arrays.asList(categoryResponse);
+        String sUrl = PRODUCTS_BY_CATEGORIES_URL+categoryName;
+        return List.of(apiProductResponseResponseFactory.execute(sUrl, ApiProductResponse.class).getProducts());
     }
 
     public List<String> getProductTitlesByWorseRating(double raiting){

@@ -1,7 +1,12 @@
 package com.testmart.demo.service;
 
+import com.testmart.demo.model.Cart;
 import com.testmart.demo.model.User;
+import com.testmart.demo.service.apireponse.ApiCartReponse;
+import com.testmart.demo.service.apireponse.ApiCategoryResponse;
+import com.testmart.demo.service.apireponse.ApiProductResponse;
 import com.testmart.demo.service.apireponse.ApiUserReponse;
+import com.testmart.demo.utils.ResponseFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -16,7 +21,11 @@ import java.util.List;
 @Service
 public class UserServiceImpl implements UserService<User>{
 
+    @Autowired
+    ResponseFactory<User> userResponseFactory;
 
+    @Autowired
+    ResponseFactory<ApiUserReponse> apiUserReponseResponseFactory;
     String USERS_URL = "https://dummyjson.com/users";
 
     private HttpHeaders headers;
@@ -31,38 +40,20 @@ public class UserServiceImpl implements UserService<User>{
 
     @Override
     public List<User> getAllUsers() {
-
-        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-        ResponseEntity<ApiUserReponse> response = restTemplate.exchange(
-                USERS_URL,
-                HttpMethod.GET,
-                null,
-                ApiUserReponse.class);
-        User[] usersResponse = response.getBody().getUsers();
+        User[] usersResponse = apiUserReponseResponseFactory.execute(USERS_URL, ApiUserReponse.class).getUsers();
         return Arrays.asList(usersResponse);
-
     }
 
     @Override
     public User getUser(Integer userId) {
-        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-        ResponseEntity<User> response = restTemplate.exchange(
-                USERS_URL+"/"+userId,
-                HttpMethod.GET,
-                null,
-                User.class);
-        return response.getBody();
+        User usersResponse = userResponseFactory.execute(USERS_URL+"/"+userId, User.class);
+        return usersResponse;
     }
 
     @Override
     public List<User> searchUsers(String query) {
-        ResponseEntity<ApiUserReponse> response = restTemplate.exchange(
-                USERS_URL+"/search?q"+query,
-                HttpMethod.GET,
-                null,
-                ApiUserReponse.class);
-        User[] productsResponse = response.getBody().getUsers();
-        return Arrays.asList(productsResponse);
+        User[] usersResponse = apiUserReponseResponseFactory.execute(USERS_URL+"/search?q"+query, ApiUserReponse.class).getUsers();
+        return Arrays.asList(usersResponse);
     }
 
 }
